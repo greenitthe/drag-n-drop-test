@@ -24,6 +24,7 @@ $(document).ready(function() {
   var texts = [];
   var tiles = [];
   var plots = [];
+  var statics = [];
   var dragging = null;
   $("#gameCanvas").bind('mousemove', function(e) {
     mX = Math.round(e.pageX - $(this).offset().left);
@@ -48,6 +49,15 @@ $(document).ready(function() {
     return newImage;
   }
 
+  function Static(image, x, y, width, height) {
+    this.image = image,
+    this.x = x,
+    this.y = y,
+    this.width = width,
+    this.height = height,
+    this.draw = function() { ctx.drawImage(this.image, this.x, this.y, this.width, this.height); }
+  }
+
   function Tile(image, x, y, width, height, action) {
     this.image = image,
     this.x = x,
@@ -58,28 +68,36 @@ $(document).ready(function() {
     this.draw = function() { ctx.drawImage(this.image, this.x, this.y, this.width, this.height); }
   }
 
-  function Plot(image, x, y, width, height, allowed) {
-    this.image = image,
+  function Plot(x, y, width, height, allowed) {
+    this.image = null,
     this.x = x,
     this.y = y,
     this.width = width,
     this.height = height,
     this.action = function () {
-      if (mX > item.x && mX < item.x+item.width && mY > item.y && mY < item.y+item.height) {
-        this.draw = function() {
-          //ctx.drawImage(<UNDERLAY IMAGE>, this.x, this.y, this.width, this.height)
-          ctx.drawImage(this.image, this.x, this.y, this.width, this.height);
+      if (mX > this.x && mX < this.x+this.width && mY > this.y && mY < this.y+this.height) {
+        if (dragging != null && this.allowed.map(function(item) { return item == dragging.type;})[0] == true) {
+          ctx.drawImage(createImage("images/highlight.png"), this.x, this.y, this.width, this.height)
+        }
+        else if (dragging == null) {
+          ctx.drawImage(createImage("images/overlay.png"), this.x, this.y, this.width, this.height)
         }
       }
       else {
-        this.draw = function() { ctx.drawImage(this.image, this.x, this.y, this.width, this.height); }
+        if (dragging != null && this.allowed.map(function(item) { return item == dragging.type;})[0] == true) {
+          ctx.drawImage(createImage("images/overlay.png"), this.x, this.y, this.width, this.height)
+        }
       }
     },
-    this.draw = function() { ctx.drawImage(this.image, this.x, this.y, this.width, this.height); },
+    this.draw = function() {
+      if (this.image) { ctx.drawImage(this.image, this.x, this.y, this.width, this.height); }
+    }
     this.allowed = allowed
   }
 
-  plots.push(new Plot(createImage("images/loaf.png"), 100,100,400,400,['generator']));
+  plots.push(new Plot(300,272,128,128,['oven']));
+  plots.push(new Plot(450,272,128,128,['farm']));
+  plots.push(new Plot(600,272,128,128,['oven']));
 
   /**
     TODO: Plots will be used for the building locations,
@@ -95,7 +113,7 @@ $(document).ready(function() {
   **/
 
   function DragSource(type, image, x, y, width, height, offX, offY) {
-    this.type,
+    this.type = type,
     this.image = image,
     this.x = x,
     this.y = y,
@@ -110,10 +128,10 @@ $(document).ready(function() {
     this.draw = function() { ctx.drawImage(this.image, this.x, this.y, this.width, this.height); },
     this.clicked = function() {
       //check if over a plot
-      if (plots.filter(function(item) {
+      if (plots.filter(function(item, index) {
                           if (mX > item.x && mX < item.x+item.width && mY > item.y && mY < item.y+item.height) {
                             //since in a plot, check if that plot accepts this type of item
-                            return item.allowed.map(function(item) {
+                            if (item.allowed.map(function(item) {
                               if (item == dragging.type) {
                                 //since it does, drop here
                                 return true
@@ -121,7 +139,13 @@ $(document).ready(function() {
                               else {
                                 return false
                               }
-                            })
+                            }) != []) {
+                              plots[index].image = dragging.image;
+                              //return true
+                            }
+                            else {
+                              return false
+                            }
                           }
                           else {
                             return false
@@ -140,15 +164,21 @@ $(document).ready(function() {
     }
   }
 
-  function Button(image, x, y, width, height, onClick) {
+  function Button(image, selectedImage, x, y, width, height, onClick) {
     this.image = image,
+    this.selectedImage = selectedImage,
     this.x = x,
     this.y = y,
     this.width = width,
     this.height = height,
     this.clicked = onClick,
     this.draw = function () {
-      ctx.drawImage(this.image, this.x, this.y, this.width, this.height);
+      if (mX > this.x && mX < this.x+this.width && mY > this.y && mY < this.y+this.height) {
+        ctx.drawImage(this.selectedImage, this.x, this.y, this.width, this.height);
+      }
+      else {
+        ctx.drawImage(this.image, this.x, this.y, this.width, this.height);
+      }
     }
   }
 
@@ -163,20 +193,34 @@ $(document).ready(function() {
     }
   }
 
-  buttons.push(new Button(createImage("images/loaf.png"), canvas.width/40, canvas.height/40,128,128,function() {
-    console.log("Clicked loaf");
-  }));
-  buttons.push(new Button(createImage("images/loaf_button.png"), canvas.width/10, canvas.height/3,64,64,function() {
+  buttons.push(new Button(createImage("images/ovenT1-Button.png"), createImage("images/ovenT1-ButtonSelected.png"), 32, 432,64,64,function() {
     if (dragging != null) {
       dragging.abort();
       dragging = null;
     }
-    dragging = new DragSource('generator', createImage("images/loaf.png"), mX, mY,64,64,mX-this.x,mY-this.y);
+    dragging = new DragSource('oven', createImage("images/ovenT1.png"), mX, mY,64,64,mX-this.x,mY-this.y);
     tiles.push(dragging);
 
   }));
 
   texts.push(new Text("0 Bread", canvas.width/5, canvas.height/6))
+  //function Tile(image, x, y, width, height, action)
+  //sky
+  for (var ix = 0; ix <= canvas.width; ix+=64) {
+    for (var iy = 336; iy >= -64; iy-=64) {
+      statics.push(new Static(createImage("images/sky.png"), ix, iy, 64, 64))
+    }
+  }
+  //sandTop
+  for (var ix = 0; ix <= canvas.width; ix+=64) {
+    statics.push(new Static(createImage("images/sandTop.png"), ix, 368, 64, 64))
+  }
+  //sand
+  for (var ix = 0; ix <= canvas.width; ix+=64) {
+    for (var iy = 432; iy <= canvas.height; iy+=64) {
+      statics.push(new Static(createImage("images/sand.png"), ix, iy, 64, 64))
+    }
+  }
 
   function gameLoop() {
     ctx.clearRect(0,0,canvas.width,canvas.height);
@@ -186,11 +230,14 @@ $(document).ready(function() {
     delay >= 10 ? (delay = 0,
                     animateFrame()) : ++delay;
 
-    drawPlayerTile(0,0,state);
+    statics.map(function(item) {item.draw();});
+    plots.map(function(item) {item.action();});
+    plots.map(function(item) {item.draw();});
+    buttons.map(function(item) {item.draw();});
     tiles.map(function(item) {item.action();});
     tiles.map(function(item) {item.draw();});
-    buttons.map(function(item) {item.draw();});
     texts.map(function(item) {item.draw();});
+    drawPlayerTile(0,0,state);
   }
 
   function animateFrame() {
