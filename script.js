@@ -43,12 +43,19 @@ $(document).ready(function() {
     }
   })
 
+  //Shortcut for creating a new image cause its a pain
   function createImage(path) {
     var newImage = new Image();
     newImage.src = path;
     return newImage;
   }
 
+  /**Classes that draw to the canvas typically have a mixture of 3 additional funcs
+   * action - run every tick like draw, meant to provide seperation of function from draw
+   * draw - draw an image, like action but only for drawing the image saved with the object
+   * clicked - what happens when clicked**/
+
+  //Draw an image that does nothing
   function Static(image, x, y, width, height) {
     this.image = image,
     this.x = x,
@@ -58,6 +65,7 @@ $(document).ready(function() {
     this.draw = function() { ctx.drawImage(this.image, this.x, this.y, this.width, this.height); }
   }
 
+  //Tiles are statics that also have an action that must be done every tick
   function Tile(image, x, y, width, height, action) {
     this.image = image,
     this.x = x,
@@ -68,6 +76,10 @@ $(document).ready(function() {
     this.draw = function() { ctx.drawImage(this.image, this.x, this.y, this.width, this.height); }
   }
 
+  //Plots are empty spaces where objects can be 'dropped' into
+  /**They are also effectively tiles which have a default action - display a guide
+   * so it is easier to see the plot, but only if moused over or if an object that
+   * the plot accepts is held currently**/
   function Plot(x, y, width, height, allowed) {
     this.image = null,
     this.x = x,
@@ -103,16 +115,22 @@ $(document).ready(function() {
     TODO: Plots will be used for the building locations,
      * Action should be if mouse over and dragging is not null,
      * display a highlighted area showing where that draggable
-     * item can be dropped. Update DragSource.clicked to loop
+     * item can be dropped. Update DragObject.clicked to loop
      * through Plots and, similar to canvas.click, find which
      * one it is over before dropping there if allowed.
 
      * Consider making it such that you can only have one item in each
      * plot, and that the item will sit in a designated location
      * on the plot after it is dropped on the plot.
+
+     * ALSO TODO: Instead of createImage'ing every time you need it, make an array
+     * or object containing each unique image
   **/
 
-  function DragSource(type, image, x, y, width, height, offX, offY) {
+  /**DragObjects are basically fancy buttons that move with the cursor where the
+  * user clicked and are able to be dropped on an appropriate plot**/
+  //They have both action, draw, and clicked
+  function DragObject(type, image, x, y, width, height, offX, offY) {
     this.type = type,
     this.image = image,
     this.x = x,
@@ -139,8 +157,8 @@ $(document).ready(function() {
                               else {
                                 return false
                               }
-                            }) != []) {
-                              plots[index].image = dragging.image;
+                            })[0] != false) {
+                              plots[index].image = dragging.image; //set the plot's image to this image
                               //return true
                             }
                             else {
@@ -151,15 +169,16 @@ $(document).ready(function() {
                             return false
                           }
                         }).length > 0) {
+        //BUG: What does this do?
         tiles.splice(tiles.indexOf(this),1,new Tile(this.image, this.x, this.y, this.width, this.height, function() {}))
         dragging = null;
       }
-      else {
+      else { //clicked anything besides a valid Plot
         this.abort();
         dragging = null;
       }
     },
-    this.abort = function() {
+    this.abort = function() { //remove this tile from the tiles list
       tiles.splice(tiles.indexOf(this),1);
     }
   }
@@ -198,7 +217,7 @@ $(document).ready(function() {
       dragging.abort();
       dragging = null;
     }
-    dragging = new DragSource('oven', createImage("images/ovenT1.png"), mX, mY,64,64,mX-this.x,mY-this.y);
+    dragging = new DragObject('oven', createImage("images/ovenT1.png"), mX, mY,64,64,mX-this.x,mY-this.y);
     tiles.push(dragging);
 
   }));
