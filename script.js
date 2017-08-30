@@ -86,22 +86,22 @@ $(document).ready(function() {
     this.y = y,
     this.width = width,
     this.height = height,
-    this.action = function () {
+    this.action = function () { //for overlays and highlighting due to mouse interaction
       if (mX > this.x && mX < this.x+this.width && mY > this.y && mY < this.y+this.height) {
-        if (dragging != null && this.allowed.map(function(item) { return item == dragging.type;})[0] == true) {
+        if (dragging != null && this.allowed.map(function(item) { return item == dragging.type;})[0] == true) { //if dragging over a valid plot
           ctx.drawImage(createImage("images/highlight.png"), this.x, this.y, this.width, this.height)
         }
-        else if (dragging == null) {
+        else if (dragging == null) { //if mouse over but not dragging
           ctx.drawImage(createImage("images/overlay.png"), this.x, this.y, this.width, this.height)
         }
       }
-      else {
+      else { //if dragging but not over this particular plot
         if (dragging != null && this.allowed.map(function(item) { return item == dragging.type;})[0] == true) {
           ctx.drawImage(createImage("images/overlay.png"), this.x, this.y, this.width, this.height)
         }
       }
     },
-    this.draw = function() {
+    this.draw = function() { //for drawing the actual image assigned to this Plot
       if (this.image) { ctx.drawImage(this.image, this.x, this.y, this.width, this.height); }
     }
     this.allowed = allowed
@@ -224,6 +224,7 @@ $(document).ready(function() {
 
   texts.push(new Text("0 Bread", canvas.width/5, canvas.height/6))
   //function Tile(image, x, y, width, height, action)
+  /** set up the sky fills in an array for the draw loop **/
   //sky
   for (var ix = 0; ix <= canvas.width; ix+=64) {
     for (var iy = 336; iy >= -64; iy-=64) {
@@ -263,6 +264,7 @@ $(document).ready(function() {
     state = state >= 7 ? 0 : ++state;
   }
 
+  //animated tile - old code, refactor when animation becomes important
   function drawPlayerTile(x,y,tileNum) {
     //Currently involves a wrapper, for any tile past 10, it assumes a new line down in the y axis
     var tileWidth = 64;
