@@ -39,7 +39,9 @@ $(document).ready(function() {
                             return true;
                           }
                         }).length <= 0) {
-      dragging.clicked();
+      if (dragging) {
+        dragging.clicked();
+      }
     }
   })
 
