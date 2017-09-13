@@ -18,6 +18,7 @@ $(document).ready(function() {
   //Example of animating a sprite
   var state = 0;
   var delay = 0;
+
   var mX;
   var mY;
   var buttons = [];
@@ -109,9 +110,9 @@ $(document).ready(function() {
     this.allowed = allowed
   }
 
-  plots.push(new Plot(300,272,128,128,['oven']));
+  plots.push(new Plot(172,144,256,256,['village0']));
   plots.push(new Plot(450,272,128,128,['farm']));
-  plots.push(new Plot(600,272,128,128,['oven']));
+  plots.push(new Plot(600,144,256,256,['village1']));
 
   /**
     TODO: Plots will be used for the building locations,
@@ -132,8 +133,9 @@ $(document).ready(function() {
   /**DragObjects are basically fancy buttons that move with the cursor where the
   * user clicked and are able to be dropped on an appropriate plot**/
   //They have both action, draw, and clicked
-  function DragObject(type, image, x, y, width, height, offX, offY) {
+  function DragObject(type, nextType, image, x, y, width, height, offX, offY) {
     this.type = type,
+    this.nextType = nextType,
     this.image = image,
     this.x = x,
     this.y = y,
@@ -161,6 +163,8 @@ $(document).ready(function() {
                               }
                             })[0] != false) {
                               plots[index].image = dragging.image; //set the plot's image to this image
+                              //TODO: replace indexOf with foreach of some kind incase there are duplicates (ex plot should accept both village0 and village1 initially but village0 adds village1 when dropped, resulting in duplicate)
+                              plots[index].allowed.splice(plots[index].allowed.indexOf(dragging.type), 1, dragging.nextType)
                               //return true
                             }
                             else {
@@ -214,12 +218,12 @@ $(document).ready(function() {
     }
   }
 
-  buttons.push(new Button(createImage("images/ovenT1-Button.png"), createImage("images/ovenT1-ButtonSelected.png"), 32, 432,64,64,function() {
+  buttons.push(new Button(createImage("images/village128-Button.png"), createImage("images/village128-ButtonSelected.png"), 32, 432,128,128,function() {
     if (dragging != null) {
       dragging.abort();
       dragging = null;
     }
-    dragging = new DragObject('oven', createImage("images/ovenT1.png"), mX, mY,64,64,mX-this.x,mY-this.y);
+    dragging = new DragObject('village0', 'village1', createImage("images/village256.png"), mX, mY,128,128,mX-this.x,mY-this.y);
     tiles.push(dragging);
 
   }));
