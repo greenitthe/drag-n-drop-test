@@ -26,6 +26,8 @@ $(document).ready(function() {
   var tiles = [];
   var plots = [];
   var statics = [];
+  var resources = [];
+  var lastResTick = new Date().getTime();
   var dragging = null;
   $("#gameCanvas").bind('mousemove', function(e) {
     mX = Math.round(e.pageX - $(this).offset().left);
@@ -52,6 +54,16 @@ $(document).ready(function() {
     newImage.src = path;
     return newImage;
   }
+
+  function Resource(name, value, isVisible, checkIncrement) {
+    this.name = name,
+    this.value = value,
+    this.isVivisble = isVisible,
+    this.checkIncrement = checkIncrement
+  }
+  resources.push(new Resource("Population", 0, false, function () {
+    this.value += 1 * plots.filter(function(item){return item.curType == "village0"}).length
+  }));
 
   /**Classes that draw to the canvas typically have a mixture of 3 additional funcs
    * action - run every tick like draw, meant to provide seperation of function from draw
@@ -84,14 +96,16 @@ $(document).ready(function() {
    * so it is easier to see the plot, but only if moused over or if an object that
    * the plot accepts is held currently**/
   function Plot(x, y, width, height, allowed) {
+    this.background = createImage('images/grass-plot-' + width + '.png'),
     this.image = null,
     this.x = x,
     this.y = y,
     this.width = width,
     this.height = height,
+    this.curType = "",
     this.action = function () { //for overlays and highlighting due to mouse interaction
       if (mX > this.x && mX < this.x+this.width && mY > this.y && mY < this.y+this.height) {
-        if (dragging != null && this.allowed.map(function(item) { return item == dragging.type;})[0] == true) { //if dragging over a valid plot
+        if (dragging != null && this.allowed.filter(function(item) { return item == dragging.type;}).length > 0) { //if dragging over a valid plot
           ctx.drawImage(createImage("images/highlight.png"), this.x, this.y, this.width, this.height)
         }
         else if (dragging == null) { //if mouse over but not dragging
@@ -99,12 +113,13 @@ $(document).ready(function() {
         }
       }
       else { //if dragging but not over this particular plot
-        if (dragging != null && this.allowed.map(function(item) { return item == dragging.type;})[0] == true) {
+        if (dragging != null && this.allowed.filter(function(item) { return item == dragging.type;}).length > 0) {
           ctx.drawImage(createImage("images/overlay.png"), this.x, this.y, this.width, this.height)
         }
       }
     },
     this.draw = function() { //for drawing the actual image assigned to this Plot
+      ctx.drawImage(this.background, this.x, this.y, this.width, this.height);
       if (this.image) { ctx.drawImage(this.image, this.x, this.y, this.width, this.height); }
     }
     this.allowed = allowed
@@ -112,7 +127,7 @@ $(document).ready(function() {
 
   plots.push(new Plot(172,144,256,256,['village0']));
   plots.push(new Plot(450,272,128,128,['farm']));
-  plots.push(new Plot(600,144,256,256,['village1']));
+  plots.push(new Plot(600,144,256,256,['village1', 'village0']));
 
   /**
     TODO: Plots will be used for the building locations,
@@ -153,18 +168,18 @@ $(document).ready(function() {
       if (plots.filter(function(item, index) {
                           if (mX > item.x && mX < item.x+item.width && mY > item.y && mY < item.y+item.height) {
                             //since in a plot, check if that plot accepts this type of item
-                            if (item.allowed.map(function(item) {
-                              if (item == dragging.type) {
-                                //since it does, drop here
-                                return true
+                            if (item.allowed.filter(function(item){
+                                                      if(item == dragging.type){return true}
+                                                      else{return false}
+                                                    }).length > 0) {
+                              plots[index].image = dragging.image; //set the plot's image to this image
+                              plots[index].curType = dragging.type;
+                              if (plots[index].allowed.indexOf(dragging.nextType) == -1) {
+                                plots[index].allowed.splice(plots[index].allowed.indexOf(dragging.type), 1, dragging.nextType)
                               }
                               else {
-                                return false
+                                plots[index].allowed.splice(plots[index].allowed.indexOf(dragging.type), 1)
                               }
-                            })[0] != false) {
-                              plots[index].image = dragging.image; //set the plot's image to this image
-                              //TODO: replace indexOf with foreach of some kind incase there are duplicates (ex plot should accept both village0 and village1 initially but village0 adds village1 when dropped, resulting in duplicate)
-                              plots[index].allowed.splice(plots[index].allowed.indexOf(dragging.type), 1, dragging.nextType)
                               //return true
                             }
                             else {
@@ -212,40 +227,48 @@ $(document).ready(function() {
     this.x = x,
     this.y = y,
     this.draw = function() {
-      ctx.font="30px 8-BIT"
-      ctx.fillStyle="#C07B25"
+      //ctx.font="30px 8-BIT"
+      ctx.font="30px Arial"
+      ctx.fillStyle="#fff"
       ctx.fillText(this.phrase, this.x, this.y)
     }
   }
 
-  buttons.push(new Button(createImage("images/village128-Button.png"), createImage("images/village128-ButtonSelected.png"), 32, 432,128,128,function() {
+  function Counter(phrase, x, y, update) {
+    this.phrase = phrase,
+    this.x = x,
+    this.y = y,
+    this.update = update,
+    this.draw = function() {
+      //ctx.font="30px 8-BIT"
+      ctx.font="30px Arial"
+      ctx.fillStyle="#fff"
+      ctx.fillText(this.update() + " " + this.phrase, this.x, this.y)
+    }
+  }
+
+  buttons.push(new Button(createImage("images/village128-Button.png"), createImage("images/village128-ButtonSelected.png"), 32, 432,96,96,function() {
     if (dragging != null) {
       dragging.abort();
       dragging = null;
     }
-    dragging = new DragObject('village0', 'village1', createImage("images/village256.png"), mX, mY,128,128,mX-this.x,mY-this.y);
+    dragging = new DragObject('village0', 'village1', createImage("images/village256.png"), mX, mY,96,96,mX-this.x,mY-this.y);
     tiles.push(dragging);
 
   }));
 
-  texts.push(new Text("0 Bread", canvas.width/5, canvas.height/6))
+  texts.push(new Counter("Population", canvas.width/100, canvas.height/6, function () { return resources.filter(function(item) {return item.name == "Population"})[0].value }))
   //function Tile(image, x, y, width, height, action)
   /** set up the sky fills in an array for the draw loop **/
   //sky
-  for (var ix = 0; ix <= canvas.width; ix+=64) {
-    for (var iy = 336; iy >= -64; iy-=64) {
-      statics.push(new Static(createImage("images/sky.png"), ix, iy, 64, 64))
+  for (var ix = 0; ix <= canvas.width; ix+=32) {
+    for (var iy = 0; iy <= canvas.height; iy+=32) {
+      statics.push(new Static(createImage("images/grass-32.png"), ix, iy, 32, 32))
     }
   }
-  //sandTop
-  for (var ix = 0; ix <= canvas.width; ix+=64) {
-    statics.push(new Static(createImage("images/sandTop.png"), ix, 368, 64, 64))
-  }
-  //sand
-  for (var ix = 0; ix <= canvas.width; ix+=64) {
-    for (var iy = 432; iy <= canvas.height; iy+=64) {
-      statics.push(new Static(createImage("images/sand.png"), ix, iy, 64, 64))
-    }
+
+  function subtractDatesInSeconds(dold,dnew) {
+    return Math.floor((dnew-dold)/1000)
   }
 
   function gameLoop() {
@@ -255,10 +278,13 @@ $(document).ready(function() {
     //add to animation delay or trigger next animation
     delay >= 10 ? (delay = 0,
                     animateFrame()) : ++delay;
-
+    if (subtractDatesInSeconds(lastResTick,new Date().getTime()) >= 1) {
+      lastResTick = new Date().getTime();
+      resources.map(function(item) {item.checkIncrement();});
+    }
     statics.map(function(item) {item.draw();});
-    plots.map(function(item) {item.action();});
     plots.map(function(item) {item.draw();});
+    plots.map(function(item) {item.action();});
     buttons.map(function(item) {item.draw();});
     tiles.map(function(item) {item.action();});
     tiles.map(function(item) {item.draw();});
