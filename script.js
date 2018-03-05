@@ -55,14 +55,28 @@ $(document).ready(function() {
     return newImage;
   }
 
-  function Resource(name, value, isVisible, checkIncrement) {
+  function Resource(name, value, capacity, isVisible, checkIncrement) {
     this.name = name,
     this.value = value,
+    this.capacity = capacity,
     this.isVivisble = isVisible,
     this.checkIncrement = checkIncrement
   }
-  resources.push(new Resource("Population", 0, false, function () {
-    this.value += 1 * plots.filter(function(item){return item.curType == "village0"}).length
+  resources.push(new Resource("Population", 0, 5, false, function () {
+    if (this.value + 1 <= this.capacity) {
+      var foodVal = resources.filter(function(item){return item.name == "Population"})[0].value;
+      if (foodVal - this.value >= 0) {
+        this.value += 1 * plots.filter(function(item){return item.curType == "village0"}).length
+      }
+      else {
+        //BUG: this needs to get the actual item, indexOf wont do it
+        resources[resources.indexOf("Population")].value = this.value;
+      }
+    }
+  }));
+  resources.push(new Resource("Food", 0, 100, false, function () {
+    this.value += 3 * plots.filter(function(item){return item.curType == "farm"}).length
+    this.value -= resources.filter(function(item){return item.name == "Population"})[0].value
   }));
 
   /**Classes that draw to the canvas typically have a mixture of 3 additional funcs
@@ -125,9 +139,10 @@ $(document).ready(function() {
     this.allowed = allowed
   }
 
-  plots.push(new Plot(172,144,256,256,['village0']));
+  plots.push(new Plot(172,144,128,128,['village0']));
   plots.push(new Plot(450,272,128,128,['farm']));
-  plots.push(new Plot(600,144,256,256,['village1', 'village0']));
+  plots.push(new Plot(600,144,128,128,['village1', 'village0']));
+  plots.push(new Plot(204, 304, 128, 128, ['farm']));
 
   /**
     TODO: Plots will be used for the building locations,
@@ -246,7 +261,7 @@ $(document).ready(function() {
       ctx.fillText(this.update() + " " + this.phrase, this.x, this.y)
     }
   }
-
+  //village0
   buttons.push(new Button(createImage("images/village128-Button.png"), createImage("images/village128-ButtonSelected.png"), 32, 432,96,96,function() {
     if (dragging != null) {
       dragging.abort();
@@ -256,8 +271,19 @@ $(document).ready(function() {
     tiles.push(dragging);
 
   }));
+  //farm
+  buttons.push(new Button(createImage("images/ovenT1-Button.png"), createImage("images/ovenT1-ButtonSelected.png"), 160, 432,96,96,function() {
+    if (dragging != null) {
+      dragging.abort();
+      dragging = null;
+    }
+    dragging = new DragObject('farm', 'ranch', createImage("images/ovenT1.png"), mX, mY,96,96,mX-this.x,mY-this.y);
+    tiles.push(dragging);
+
+  }));
 
   texts.push(new Counter("Population", canvas.width/100, canvas.height/6, function () { return resources.filter(function(item) {return item.name == "Population"})[0].value }))
+  texts.push(new Counter("Food", canvas.width/100, canvas.height/4, function () { return resources.filter(function(item) {return item.name == "Food"})[0].value }))
   //function Tile(image, x, y, width, height, action)
   /** set up the sky fills in an array for the draw loop **/
   //sky
